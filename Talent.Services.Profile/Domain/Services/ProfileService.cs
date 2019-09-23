@@ -1,17 +1,17 @@
-﻿using Talent.Common.Contracts;
-using Talent.Common.Models;
-using Talent.Services.Profile.Domain.Contracts;
-using Talent.Services.Profile.Models.Profile;
+﻿using Microsoft.AspNetCore.Http;
+using MongoDB.Bson;
+using MongoDB.Driver;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using MongoDB.Driver;
-using MongoDB.Bson;
-using Talent.Services.Profile.Models;
-using Microsoft.AspNetCore.Http;
-using System.IO;
+using Talent.Common.Contracts;
+using Talent.Common.Models;
 using Talent.Common.Security;
+using Talent.Services.Profile.Domain.Contracts;
+using Talent.Services.Profile.Models;
+using Talent.Services.Profile.Models.Profile;
 
 namespace Talent.Services.Profile.Domain.Services
 {
@@ -475,7 +475,55 @@ namespace Talent.Services.Profile.Domain.Services
         public async Task<IEnumerable<TalentSnapshotViewModel>> GetTalentSnapshotList(string employerOrJobId, bool forJob, int position, int increment)
         {
             //Your code here;
-            throw new NotImplementedException();
+            try
+            {
+                if (!forJob)
+                {
+                    var employerId = employerOrJobId;
+                    var profile = await _employerRepository.GetByIdAsync(employerId);
+                    var users = _userRepository.Collection.Skip(position).Take(increment).AsEnumerable();
+                    if (profile != null)
+                    {
+                        var result = new List<TalentSnapshotViewModel>();
+
+                        foreach (var user in users)
+                        {
+                            var skills = new List<string>();
+                            foreach (var skill in user.Skills)
+                            {
+                                skills.Add(skill.Skill);
+                            }
+
+                            var newSnapshot = new TalentSnapshotViewModel();
+                            newSnapshot.Id = user.Id;
+                            newSnapshot.Name = user.FirstName + " " + user.LastName;
+                            newSnapshot.PhotoId = user.ProfilePhotoUrl;
+                            newSnapshot.VideoUrl = user.VideoName;
+                            newSnapshot.CVUrl = user.CvName;
+                            newSnapshot.Summary = user.Summary;
+                            if (user.Experience.Count > 0)
+                            {
+                                newSnapshot.CurrentEmployment = user.Experience[0].Company;
+                                newSnapshot.Level = user.Experience[0].Position;
+                            }
+                            newSnapshot.Visa = user.VisaStatus;
+                            newSnapshot.Skills = skills;
+
+                            result.Add(newSnapshot);
+                        }
+                        return result;
+                    }
+                    return null;
+                }
+                else
+                {
+                    throw new NotImplementedException();
+                }
+            }
+            catch (Exception e)
+            {
+                return null;
+            }
         }
 
         public async Task<IEnumerable<TalentSnapshotViewModel>> GetTalentSnapshotList(IEnumerable<string> ids)
@@ -643,7 +691,7 @@ namespace Talent.Services.Profile.Domain.Services
             //Your code here;
             throw new NotImplementedException();
         }
-         
+
         public async Task<int> GetTotalTalentsForClient(string clientId, string recruiterId)
         {
             //Your code here;
